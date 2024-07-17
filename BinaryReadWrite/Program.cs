@@ -4,32 +4,63 @@ using System.IO;
 
 namespace BinaryReadWrite
 {
-    internal class Program
+    static class Program
     {
-        static void Main(string[] args)
+        private static void Main()
         {
-            List<Student> studentsToWrite = new List<Student>
-            {
-                new Student { Name = "Жульен", Group = "G1", DateOfBirth = new DateTime(2001, 10, 22), AverageScore = 3.3M },
-                new Student { Name = "Боб", Group = "G1", DateOfBirth = new DateTime(1999, 5, 25), AverageScore = 4.5M},
-                new Student { Name = "Лилия", Group = "F2", DateOfBirth = new DateTime(1999, 1, 11), AverageScore = 5M},
-                new Student { Name = "Роза", Group = "F2", DateOfBirth = new DateTime(1989, 9, 19), AverageScore = 3.7M}
-            };
+            List<Student> studentsToWrite =
+                new()
+                {
+                    new()
+                    {
+                        Name = "Жульен",
+                        Group = "G1",
+                        DateOfBirth = new DateTime(2001, 10, 22),
+                        AverageScore = 3.3M
+                    },
+                    new Student
+                    {
+                        Name = "Боб",
+                        Group = "G1",
+                        DateOfBirth = new DateTime(1999, 5, 25),
+                        AverageScore = 4.5M
+                    },
+                    new Student
+                    {
+                        Name = "Лилия",
+                        Group = "F2",
+                        DateOfBirth = new DateTime(1999, 1, 11),
+                        AverageScore = 5M
+                    },
+                    new Student
+                    {
+                        Name = "Роза",
+                        Group = "F2",
+                        DateOfBirth = new DateTime(1989, 9, 19),
+                        AverageScore = 3.7M
+                    }
+                };
 
             WriteStudentsToBinFile(studentsToWrite, "students.dat");
 
-            List<Student> studentsToRead = ReadStudentsFromBinFile("students.dat");
-
-            foreach (Student studentProp in studentsToRead)
+            foreach (Student studentProp in ReadStudentsFromBinFile("students.dat"))
             {
-                Console.WriteLine(studentProp.Name + " " + studentProp.Group + " " + studentProp.DateOfBirth + " " + studentProp.AverageScore);
+                Console.WriteLine(
+                    studentProp.Name
+                        + " "
+                        + studentProp.Group
+                        + " "
+                        + studentProp.DateOfBirth
+                        + " "
+                        + studentProp.AverageScore
+                );
             }
         }
 
-        static void WriteStudentsToBinFile(List<Student> students, string fileName)
+        private static void WriteStudentsToBinFile(List<Student> students, string fileName)
         {
-            using FileStream fs = new FileStream(fileName, FileMode.Create);
-            using BinaryWriter bw = new BinaryWriter(fs);
+            using FileStream fs = new(fileName, FileMode.Create);
+            using BinaryWriter bw = new(fs);
 
             foreach (Student student in students)
             {
@@ -41,35 +72,109 @@ namespace BinaryReadWrite
             bw.Flush();
             bw.Close();
             fs.Close();
-
         }
 
-        static List<Student> ReadStudentsFromBinFile(string fileName)
+        //private static List<Student> ReadStudentsFromBinFile(string fileName)
+        //{
+        //    List<Student> result = new();
+        //    using FileStream fs = new(fileName, FileMode.Open);
+        //    BinaryReader br = new(fs);
+
+        //    while (fs.Position < fs.Length)
+        //    {
+        //        Student student = new()
+        //        {
+        //            Name = br.ReadString(),
+        //            Group = br.ReadString(),
+        //            DateOfBirth = DateTime.FromBinary(br.ReadInt64()),
+        //            AverageScore = br.ReadDecimal()
+        //        };
+
+        //        result.Add(student);
+        //    }
+
+        //    fs.Close();
+        //    return result;
+        //}
+        private static List<Student> ReadStudentsFromBinFile(string fileName)
         {
             List<Student> result = new();
-            using FileStream fs = new FileStream(fileName, FileMode.Open);
-            using StreamReader sr = new StreamReader(fs);
+            using FileStream fs = new(fileName, FileMode.Open);
+            using BinaryReader br = new(fs);
 
-            Console.WriteLine(sr.ReadToEnd());
-
-            fs.Position = 0;
-
-            BinaryReader br = new BinaryReader(fs);
-
+            int recordNumber = 0;
             while (fs.Position < fs.Length)
             {
-                Student student = new Student();
-                student.Name = br.ReadString();
-                student.Group = br.ReadString();
-                long dt = br.ReadInt64();
-                student.DateOfBirth = DateTime.FromBinary(dt);
-                student.AverageScore = br.ReadDecimal();
+                recordNumber++;
+                Student student = ReadSingleStudent(br);
+                if (student != null)
+                {
+                    result.Add(student);
+                }
+                else
+                {
+                    Console.WriteLine($"Обнаружены невалидные данные в записи {recordNumber}");
 
-                result.Add(student);
+                }
             }
 
-            fs.Close();
+            Console.WriteLine($"Прочитано {result.Count} корректных записей из {recordNumber}\n");
             return result;
+        }
+
+        private static Student ReadSingleStudent(BinaryReader br)
+        {
+            try
+            {
+                string name = br.ReadString();
+                string group = br.ReadString();
+                long dateTicks = br.ReadInt64();
+                decimal averageScore = br.ReadDecimal();
+
+                if (string.IsNullOrEmpty(name))
+                {
+                    Console.WriteLine("Ошибка: пустое имя");
+                    return null;
+                }
+                if (string.IsNullOrEmpty(group))
+                {
+                    Console.WriteLine("Ошибка: пустая группа");
+                    return null;
+                }
+                if (dateTicks < DateTime.MinValue.Ticks || dateTicks > DateTime.MaxValue.Ticks)
+                {
+                    Console.WriteLine("Ошибка: некорректная дата рождения");
+                    return null;
+                }
+                if (averageScore < 0 || averageScore > 5)
+                {
+                    Console.WriteLine("Ошибка: некорректный средний балл");
+                    return null;
+                }
+
+                return new Student
+                {
+                    Name = name,
+                    Group = group,
+                    DateOfBirth = DateTime.FromBinary(dateTicks),
+                    AverageScore = averageScore
+                };
+            }
+            catch (EndOfStreamException)
+            {
+                Console.WriteLine("Достигнут конец файла");
+                return null;
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"Ошибка ввода-вывода: {ex.Message}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Неожиданная ошибка: {ex.Message}");
+                return null;
+            }
         }
     }
 }
