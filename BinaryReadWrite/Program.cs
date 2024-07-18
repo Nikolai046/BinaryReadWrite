@@ -12,73 +12,102 @@ namespace BinaryReadWrite
                 new()
                 {
                     new()
-                    {
-                        Name = "Жульен",
-                        Group = "G1",
-                        DateOfBirth = new DateTime(2001, 10, 22),
-                        AverageScore = 3.3M
-                    },
+                    {Name = "Жульен", Group = "G1", DateOfBirth = new DateTime(2001, 10, 22), AverageScore = 3.3M},
                     new Student
-                    {
-                        Name = "Боб",
-                        Group = "G1",
-                        DateOfBirth = new DateTime(1999, 5, 25),
-                        AverageScore = 4.5M
-                    },
+                    {Name = "Боб", Group = "G1", DateOfBirth = new DateTime(1999, 5, 25), AverageScore = 4.5M},
                     new Student
-                    {
-                        Name = "Лилия",
-                        Group = "F2",
-                        DateOfBirth = new DateTime(1999, 1, 11),
-                        AverageScore = 5M
-                    },
+                    {Name = "Лилия", Group = "F2", DateOfBirth = new DateTime(1999, 1, 11), AverageScore = 5M},
                     new Student
-                    {
-                        Name = "Роза",
-                        Group = "F2",
-                        DateOfBirth = new DateTime(1989, 9, 19),
-                        AverageScore = 3.7M
-                    },
+                    {Name = "Роза", Group = "F2", DateOfBirth = new DateTime(1989, 9, 19), AverageScore = 3.7M},
                     new Student
-                    {
-                        Name = "Михаил",
-                        Group = "A2",
-                        DateOfBirth = new DateTime(1988, 10, 29),
-                        AverageScore = 3.7M
-                    },
+                    {Name = "Михаил", Group = "A2", DateOfBirth = new DateTime(1988, 10, 29), AverageScore = 3.7M},
                     new Student
-                    {
-                        Name = "Ирина",
-                        Group = "G1",
-                        DateOfBirth = new DateTime(1987, 2, 14),
-                        AverageScore = 3.7M
-                    }
+                    {Name = "Ирина", Group = "G1", DateOfBirth = new DateTime(1987, 2, 14), AverageScore = 3.7M}
                 };
 
+            Console.WriteLine($"Записываем данные учеников в файл в бинарном формате в файл:\n{Path.Combine(Directory.GetCurrentDirectory(), "students.dat")}");
             WriteStudentsToBinFile(studentsToWrite, "students.dat");
+            PressAnyKey();
+
+            Console.WriteLine("Произвочим чтение записанных данных и вывод результата на экран");
             List<Student> studentsRead = ReadStudentsFromBinFile("students.dat");
             PrintDatabase(studentsRead);
-            studentsRead.Sort((x, y) => string.CompareOrdinal(x.Group, y.Group)); // производим сортировку студентов по группе
+            PressAnyKey();
+
+            Console.WriteLine("Производим сортировку студентов \"по группе\"");
+            studentsRead.Sort((x, y) => string.CompareOrdinal(x.Group, y.Group));
             Console.WriteLine("\nПосле сортировки:");
             PrintDatabase(studentsRead);
-            SaveToDifferetFiles(studentsRead);
-            Console.Read();
+            PressAnyKey();
+
+            string desktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Students");
+            Console.WriteLine($"Создаем каталог {desktopPath}");
+            Console.WriteLine("И сохраняем студентов в текстовые файлы. Для каждой группы отдельный файл.");
+            SaveToDifferetFiles(studentsRead, desktopPath);
+            Console.SetCursorPosition(0, Console.WindowHeight - 3);
+            PressAnyKey();
         }
 
-        private static void SaveToDifferetFiles(List<Student> students)
+        /// Выводит сообщение "Нажмите любую кнопку..." в нижней части консоли,
+        /// ожидает нажатия клавиши и очищает консоль.
+        private static void PressAnyKey()
         {
-            foreach (Student student in students)
+            Console.SetCursorPosition(0, Console.WindowHeight - 3);
+            Console.Write("Нажмите любую кнопку...");
+            Console.ReadKey();
+            Console.Clear();
+        }
+
+        /// Сохраняет данные студентов в отдельные текстовые файлы для каждой группы.
+        private static void SaveToDifferetFiles(List<Student> students, string path)
+        {
+            if (CreateDirectory(path))
             {
-                string filePath = $"Группа {student.Group}.txt";
-
-                using (StreamWriter sw = File.AppendText(filePath))
+                foreach (Student student in students)
                 {
-                    sw.WriteLine($"{student.Name} \t{student.Group} \t{student.DateOfBirth.ToShortDateString()} \t{student.AverageScore}");
-                }
+                    string filePath = Path.Combine(path, $"Группа {student.Group}.txt");
 
+                    try
+                    {
+                        using (StreamWriter sw = File.AppendText(filePath))
+                        {
+                            sw.WriteLine($"{student.Name} \t{student.Group} \t{student.DateOfBirth:dd.MM.yyyy} \t{student.AverageScore}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Ошибка при записи в файл {filePath}: {ex.Message}");
+                    }
+                }
             }
         }
 
+        /// Создает директорию по указанному пути, если она не существует.
+        private static bool CreateDirectory(string path)
+        {
+            try
+            {
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"Директория уже существует: {path}");
+                    PressAnyKey();
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Ошибка при создании директории: {e.Message}");
+                PressAnyKey();
+                return false;
+            }
+        }
+
+        /// Записывает список студентов в бинарный файл.
         private static void WriteStudentsToBinFile(List<Student> students, string fileName)
         {
             using FileStream fs = new(fileName, FileMode.Create);
@@ -95,14 +124,16 @@ namespace BinaryReadWrite
             fs.Close();
         }
 
+        /// Выводит данные студентов на консоль.
         private static void PrintDatabase(List<Student> studentData)
         {
             foreach (Student student in studentData)
             {
-                Console.WriteLine($"{student.Name} \t{student.Group} \t{student.DateOfBirth.ToShortDateString()} \t{student.AverageScore}");
+                Console.WriteLine($"{student.Name} \t{student.Group} \t{student.DateOfBirth:dd.MM.yyyy} \t{student.AverageScore}");
             }
         }
 
+        /// Читает данные студентов из бинарного файла.
         private static List<Student> ReadStudentsFromBinFile(string fileName)
         {
             List<Student> result = new();
@@ -128,6 +159,7 @@ namespace BinaryReadWrite
             return result;
         }
 
+        /// Читает данные одного студента из бинарного потока.
         private static Student ReadSingleStudent(BinaryReader br)
         {
             try
