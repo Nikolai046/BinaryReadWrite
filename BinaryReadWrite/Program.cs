@@ -4,7 +4,7 @@ using System.IO;
 
 namespace BinaryReadWrite
 {
-    static class Program
+    internal static class Program
     {
         private static void Main()
         {
@@ -38,22 +38,44 @@ namespace BinaryReadWrite
                         Group = "F2",
                         DateOfBirth = new DateTime(1989, 9, 19),
                         AverageScore = 3.7M
+                    },
+                    new Student
+                    {
+                        Name = "Михаил",
+                        Group = "A2",
+                        DateOfBirth = new DateTime(1988, 10, 29),
+                        AverageScore = 3.7M
+                    },
+                    new Student
+                    {
+                        Name = "Ирина",
+                        Group = "G1",
+                        DateOfBirth = new DateTime(1987, 2, 14),
+                        AverageScore = 3.7M
                     }
                 };
 
             WriteStudentsToBinFile(studentsToWrite, "students.dat");
+            List<Student> studentsRead = ReadStudentsFromBinFile("students.dat");
+            PrintDatabase(studentsRead);
+            studentsRead.Sort((x, y) => string.CompareOrdinal(x.Group, y.Group)); // производим сортировку студентов по группе
+            Console.WriteLine("\nПосле сортировки:");
+            PrintDatabase(studentsRead);
+            SaveToDifferetFiles(studentsRead);
+            Console.Read();
+        }
 
-            foreach (Student studentProp in ReadStudentsFromBinFile("students.dat"))
+        private static void SaveToDifferetFiles(List<Student> students)
+        {
+            foreach (Student student in students)
             {
-                Console.WriteLine(
-                    studentProp.Name
-                        + " "
-                        + studentProp.Group
-                        + " "
-                        + studentProp.DateOfBirth
-                        + " "
-                        + studentProp.AverageScore
-                );
+                string filePath = $"Группа {student.Group}.txt";
+
+                using (StreamWriter sw = File.AppendText(filePath))
+                {
+                    sw.WriteLine($"{student.Name} \t{student.Group} \t{student.DateOfBirth.ToShortDateString()} \t{student.AverageScore}");
+                }
+
             }
         }
 
@@ -61,7 +83,6 @@ namespace BinaryReadWrite
         {
             using FileStream fs = new(fileName, FileMode.Create);
             using BinaryWriter bw = new(fs);
-
             foreach (Student student in students)
             {
                 bw.Write(student.Name);
@@ -74,28 +95,14 @@ namespace BinaryReadWrite
             fs.Close();
         }
 
-        //private static List<Student> ReadStudentsFromBinFile(string fileName)
-        //{
-        //    List<Student> result = new();
-        //    using FileStream fs = new(fileName, FileMode.Open);
-        //    BinaryReader br = new(fs);
+        private static void PrintDatabase(List<Student> studentData)
+        {
+            foreach (Student student in studentData)
+            {
+                Console.WriteLine($"{student.Name} \t{student.Group} \t{student.DateOfBirth.ToShortDateString()} \t{student.AverageScore}");
+            }
+        }
 
-        //    while (fs.Position < fs.Length)
-        //    {
-        //        Student student = new()
-        //        {
-        //            Name = br.ReadString(),
-        //            Group = br.ReadString(),
-        //            DateOfBirth = DateTime.FromBinary(br.ReadInt64()),
-        //            AverageScore = br.ReadDecimal()
-        //        };
-
-        //        result.Add(student);
-        //    }
-
-        //    fs.Close();
-        //    return result;
-        //}
         private static List<Student> ReadStudentsFromBinFile(string fileName)
         {
             List<Student> result = new();
@@ -114,7 +121,6 @@ namespace BinaryReadWrite
                 else
                 {
                     Console.WriteLine($"Обнаружены невалидные данные в записи {recordNumber}");
-
                 }
             }
 
